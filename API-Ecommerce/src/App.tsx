@@ -326,7 +326,7 @@ function App() {
     <>
       <header className="app-header">
         <img
-          src="https://upload.wikimedia.org/wikipedia/commons/a/a9/Amazon_logo.svg" height={40}
+          src="https://upload.wikimedia.org/wikipedia/commons/4/41/Antu_amazon-mp3-store-source.svg" height={70}
           alt="Logo da Amazon"
           className="header-logo"
           onClick={() => setSelectedProductId(null)}
