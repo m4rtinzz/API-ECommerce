@@ -27,7 +27,7 @@ body {
   color: #e74c3c;
 }
 
-/* Estilos do Catálogo (antigo ProductCatalog.css) */
+/* Estilos do Catálogo */
 .catalog-container {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
@@ -37,7 +37,7 @@ body {
   margin: 0 auto;
 }
 
-/* Estilos do Card (antigo ProductCard.css) */
+/* Estilos do Card */
 .card {
   border: 1px solid #ddd;
   border-radius: 8px;
@@ -51,6 +51,7 @@ body {
 
 .card:hover {
   transform: translateY(-5px);
+  cursor: pointer;
 }
 
 .card-image {
