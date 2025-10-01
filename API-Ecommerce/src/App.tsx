@@ -16,6 +16,21 @@ type Product = {
   };
 };
 
+type User = {
+  id: number;
+  name: {
+    firstname: string;
+    lastname: string;
+  };
+  username: string;
+};
+
+type Cart = {
+  id: number;
+  userId: number;
+  products: CartProduct[];
+};
+
 // --- Componente da Página de Catálogo ---
 function ProductCatalog({ onProductClick }: { onProductClick: (id: number) => void }) {
   const [products, setProducts] = useState<Product[]>([]);
@@ -105,24 +120,168 @@ function ProductDetail({ productId, onBackClick }: { productId: number; onBackCl
   );
 }
 
+// --- Componente da Página de Login ---
+function LoginPage({ onLoginSuccess }: { onLoginSuccess: (token: string) => void }) {
+  const [username, setUsername] = useState('mor_2314'); // Usuário de exemplo da API
+  const [password, setPassword] = useState('83r5^_'); // Senha de exemplo da API
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setLoading(true);
+    setError(null);
+
+    try {
+      const response = await fetch('https://fakestoreapi.com/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      });
+
+      if (!response.ok) {
+        throw new Error('Credenciais inválidas. Por favor, tente novamente.');
+      }
+
+      const data = await response.json();
+      onLoginSuccess(data.token);
+
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Ocorreu um erro ao tentar fazer login.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="login-container">
+      <form className="login-form" onSubmit={handleSubmit}>
+        <h2>Login</h2>
+        <div className="form-group">
+          <label htmlFor="username">Usuário</label>
+          <input
+            id="username"
+            type="text"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            required
+          />
+        </div>
+        <div className="form-group">
+          <label htmlFor="password">Senha</label>
+          <input
+            id="password"
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+          />
+        </div>
+        {error && <p className="error-message">{error}</p>}
+        <button type="submit" disabled={loading}>
+          {loading ? 'Entrando...' : 'Entrar'}
+        </button>
+      </form>
+    </div>
+  );
+}
+
+// --- Componente do Carrinho ---
+function ShoppingCart({
+  cart,
+  products,
+  onProductClick
+}: {
+  cart: Cart | null;
+  products: Product[];
+  onProductClick: (id: number) => void;
+}) {
+  if (!cart || cart.products.length === 0) {
+    return <div className="cart-info">🛒 Carrinho vazio</div>;
+  }
+
+  // Função para encontrar o título do produto pelo ID
+  const getProductTitle = (productId: number) => {
+    const product = products.find(p => p.id === productId);
+    return product ? product.title : `Produto ${productId}`;
+  };
+
+  return (
+    <div className="cart-info">
+      <span>🛒 {cart.products.length} item(s)</span>
+      <div className="cart-dropdown">
+        <h4>Seu Carrinho</h4>
+        <ul>
+          {cart.products.map((item) => (
+            <li key={item.productId} onClick={() => onProductClick(item.productId)}>
+              {getProductTitle(item.productId)} (x{item.quantity})
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  );
+}
+
 // --- Componente Principal (Layout e Gerenciador de Visualização) ---
 function App() {
-  // Este estado controla qual visualização é mostrada
+  const [token, setToken] = useState<string | null>(null);
+  const [user, setUser] = useState<User | null>(null);
+  const [cart, setCart] = useState<Cart | null>(null);
   const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
+  const [allProducts, setAllProducts] = useState<Product[]>([]);
+
+  // Efeito para buscar dados do usuário e carrinho após o login
+  useEffect(() => {
+    if (!token) return;
+
+    // Simulação: A API não retorna o ID do usuário no login.
+    // Vamos buscar os dados do usuário com ID 2 e seu carrinho.
+    const userId = 2;
+
+    const fetchUserData = async () => {
+      // Buscamos todos os dados em paralelo para otimizar
+      const [userResponse, cartResponse, productsResponse] = await Promise.all([
+        fetch(`https://fakestoreapi.com/users/${userId}`),
+        fetch(`https://fakestoreapi.com/carts/user/${userId}`),
+        fetch('https://fakestoreapi.com/products')
+      ]);
+      const userData = await userResponse.json();
+      const cartData = await cartResponse.json();
+      const productsData = await productsResponse.json();
+
+      setUser(userData);
+      setCart(cartData[0]); // A API retorna um array de carrinhos
+      setAllProducts(productsData);
+    };
+
+    fetchUserData();
+  }, [token]);
+
+  // Se não houver token, mostra a página de login
+  if (!token) {
+    return <LoginPage onLoginSuccess={setToken} />;
+  }
 
   return (
     <>
       <header className="app-header">
-        <h1 onClick={() => setSelectedProductId(null)} style={{ cursor: 'pointer' }}>
+        <h1 onClick={() => setSelectedProductId(null)}>
           Meu E-commerce
         </h1>
+        <div className="header-user-info">
+          <span>
+            Olá,{' '}
+            {user?.name.firstname &&
+              user.name.firstname.charAt(0).toUpperCase() + user.name.firstname.slice(1)}
+          </span>
+          <ShoppingCart cart={cart} products={allProducts} onProductClick={setSelectedProductId} />
+        </div>
       </header>
       <main>
         {selectedProductId === null ? (
-          // Se nenhum produto estiver selecionado, mostra o catálogo
-          <ProductCatalog onProductClick={setSelectedProductId} />
+          <ProductCatalog onProductClick={setSelectedProductId} /> // Poderíamos passar allProducts aqui para evitar uma busca duplicada
         ) : (
-          // Se um produto estiver selecionado, mostra os detalhes
           <ProductDetail productId={selectedProductId} onBackClick={() => setSelectedProductId(null)} />
         )}
       </main>
