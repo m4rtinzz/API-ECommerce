@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import './App.css'
 
 // --- Tipos ---
@@ -36,6 +36,10 @@ function ProductCatalog({ onProductClick }: { onProductClick: (id: number) => vo
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortConfig, setSortConfig] = useState({ key: 'title', order: 'asc' });
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 8;
 
   useEffect(() => {
     async function fetchProducts() {
@@ -56,20 +60,75 @@ function ProductCatalog({ onProductClick }: { onProductClick: (id: number) => vo
   if (loading) return <p className="loading-message">Carregando produtos...</p>;
   if (error) return <p className="error-message">Erro ao carregar produtos: {error}</p>;
 
+  const filteredAndSortedProducts = products
+    .filter(product =>
+      product.title.toLowerCase().includes(searchQuery.toLowerCase())
+    )
+    .sort((a, b) => {
+      if (sortConfig.key === 'price') {
+        return sortConfig.order === 'asc' ? a.price - b.price : b.price - a.price;
+      }
+      if (sortConfig.key === 'rating') {
+        return sortConfig.order === 'asc' ? a.rating.rate - b.rating.rate : b.rating.rate - a.rating.rate;
+      }
+      // Por padrão, ordena por título
+      return sortConfig.order === 'asc'
+        ? a.title.localeCompare(b.title)
+        : b.title.localeCompare(a.title);
+    });
+
+  const totalPages = Math.ceil(filteredAndSortedProducts.length / itemsPerPage);
+  const paginatedProducts = filteredAndSortedProducts.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  const handleSortChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const [key, order] = e.target.value.split('-');
+    setSortConfig({ key, order });
+    setCurrentPage(1); // Reseta para a primeira página ao ordenar
+  };
+
   return (
-    <div className="catalog-container">
-      {products.map((product) => (
-        <div key={product.id} className="card-link" onClick={() => onProductClick(product.id)}>
-          <div className="card">
-            <img src={product.image} alt={product.title} className="card-image" />
-            <div className="card-body">
-              <h3 className="card-title">{product.title}</h3>
-              <p className="card-price">{product.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
-              <p className="card-rating">Avaliação: {product.rating.rate} ⭐</p>
+    <div className="catalog-page">
+      <div className="controls-container">
+        <input
+          type="text"
+          placeholder="Buscar produtos..."
+          className="search-input"
+          value={searchQuery}
+          onChange={(e) => {
+            setSearchQuery(e.target.value);
+            setCurrentPage(1); // Reseta para a primeira página ao buscar
+          }}
+        />
+        <select className="sort-select" onChange={handleSortChange} defaultValue="title-asc">
+          <option value="title-asc">Ordenar por: Título (A-Z)</option>
+          <option value="title-desc">Ordenar por: Título (Z-A)</option>
+          <option value="price-asc">Ordenar por: Preço (Menor)</option>
+          <option value="price-desc">Ordenar por: Preço (Maior)</option>
+          <option value="rating-desc">Ordenar por: Avaliação (Melhor)</option>
+        </select>
+      </div>
+      <div className="catalog-container">
+        {paginatedProducts.map((product) => (
+          <div key={product.id} className="card-link" onClick={() => onProductClick(product.id)}>
+            <div className="card">
+              <img src={product.image} alt={product.title} className="card-image" />
+              <div className="card-body">
+                <h3 className="card-title">{product.title}</h3>
+                <p className="card-price">{product.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
+                <p className="card-rating">Avaliação: {product.rating.rate} ⭐</p>
+              </div>
             </div>
           </div>
-        </div>
-      ))}
+        ))}
+      </div>
+      <div className="pagination-container">
+        <button onClick={() => setCurrentPage(p => Math.max(p - 1, 1))} disabled={currentPage === 1}>Anterior</button>
+        <span>Página {currentPage} de {totalPages}</span>
+        <button onClick={() => setCurrentPage(p => Math.min(p + 1, totalPages))} disabled={currentPage === totalPages}>Próxima</button>
+      </div>
     </div>
   );
 }
