@@ -325,8 +325,14 @@ function App() {
   return (
     <>
       <header className="app-header">
+        <img
+          src="https://upload.wikimedia.org/wikipedia/commons/a/a9/Amazon_logo.svg" height={40}
+          alt="Logo da Amazon"
+          className="header-logo"
+          onClick={() => setSelectedProductId(null)}
+        />
         <h1 onClick={() => setSelectedProductId(null)}>
-          Meu E-commerce
+          Amazon
         </h1>
         <div className="header-user-info">
           <span>
